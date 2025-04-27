@@ -6,7 +6,7 @@
 # Author: Jason Young (杨郑鑫).
 # E-Mail: AI.Jason.Young@outlook.com
 # Last Modified by: Jason Young (杨郑鑫)
-# Last Modified time: 2025-04-13 14:06:29
+# Last Modified time: 2025-04-24 10:12:35
 # Copyright (c) 2025 Yangs.AI
 # 
 # This source code is licensed under the Apache License 2.0 found in the
@@ -23,3 +23,7 @@ def split_sequence(sequence: list, split_count: int) -> list[list]:
         splits.append(sequence[start:end])
         start = end
     return splits
+
+
+def no_operation(*args, **kwargs):
+    pass
