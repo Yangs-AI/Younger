@@ -33,7 +33,7 @@ def install_plugin_click_group(click_group_name: str, entry_point_group: str, en
                 click_group.add_command(cmd, name=name)
         except Exception as exception:
             # print(f'Warning: Failed to load plugin "{entry_point_group}:{entry_point_name}" for click group "{click_group_name}".\nException: {exception}')
-            click_group.add_command(MissingCommand(click_group_name, entry_point_group, entry_point_name), name=entry_point_name)
+            click_group.add_command(MissingCommand(click_group_name, entry_point_group, entry_point_name))
 
         return click_group
     return decorator
@@ -43,7 +43,8 @@ class MissingCommand(click.Command):
     def __init__(self, click_group_name: str, entry_point_group: str, entry_point_name: str):
         plugin = entry_point_group.replace('.', '-') + '-' + entry_point_name
         module = entry_point_group.replace('younger.', '') + '-' + entry_point_name
-        click.Command.__init__(self, entry_point_name)
+        missing_command_name = f'{click_group_name} (Missing)'
+        click.Command.__init__(self, missing_command_name)
 
         self.help = (
             f'\n'
