@@ -24,13 +24,16 @@ def install_plugin_click_group(click_group_name: str, entry_point_group: str, en
     def decorator(click_group):
         assert isinstance(click_group, click.Group), TypeError("Plugins Can Only Be Attached to An Instance of click.Group()")
         try:
-            entry_point = entry_points(group=entry_point_group, name=entry_point_name)[0]
+            all_entry_points = list(entry_points(group=entry_point_group, name=entry_point_name))
+            assert len(all_entry_points) != 0, f"No entry point found for {entry_point_group}:{entry_point_name}"
+            entry_point = all_entry_points[0]
             plugin_click_group = entry_point.load()
             assert isinstance(plugin_click_group, click.Group)
             for name, cmd in plugin_click_group.commands.items():
                 click_group.add_command(cmd, name=name)
-        except Exception:
-            click_group.add_command(MissingCommand(click_group_name, entry_point_group, entry_point_name))
+        except Exception as exception:
+            # print(f'Warning: Failed to load plugin "{entry_point_group}:{entry_point_name}" for click group "{click_group_name}".\nException: {exception}')
+            click_group.add_command(MissingCommand(click_group_name, entry_point_group, entry_point_name), name=entry_point_name)
 
         return click_group
     return decorator
@@ -40,8 +43,7 @@ class MissingCommand(click.Command):
     def __init__(self, click_group_name: str, entry_point_group: str, entry_point_name: str):
         plugin = entry_point_group.replace('.', '-') + '-' + entry_point_name
         module = entry_point_group.replace('younger.', '') + '-' + entry_point_name
-        missing_command_name = f'{click_group_name} (Missing)'
-        click.Command.__init__(self, missing_command_name)
+        click.Command.__init__(self, entry_point_name)
 
         self.help = (
             f'\n'
