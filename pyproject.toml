@@ -76,10 +76,3 @@ Repository = "https://github.com/Yangs-AI/Younger.git"
 
 [project.scripts]
 younger = "younger.commands.main:main"
-
-[project.entry-points."younger.apps"]
-dl = "younger_apps_dl.commands.main:main"
-
-[project.entry-points."younger.logics"]
-ir = "younger_logics_ir.commands.main:main"
-core = "younger_logics_core.commands.main:main"
