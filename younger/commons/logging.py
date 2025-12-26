@@ -6,7 +6,7 @@
 # Author: Jason Young (杨郑鑫).
 # E-Mail: AI.Jason.Young@outlook.com
 # Last Modified by: Jason Young (杨郑鑫)
-# Last Modified time: 2025-01-10 10:12:16
+# Last Modified time: 2025-12-26 01:15:27
 # Copyright (c) 2024 Yangs.AI
 # 
 # This source code is licensed under the Apache License 2.0 found in the
@@ -109,6 +109,17 @@ def set_logger(
 def use_logger(name: str):
     global logger
     logger = get_logger(name)
+
+
+def equip_package_logger(package_name: str, logging_filepath: pathlib.Path | str | None = None):
+    """Configure the logger for a specific package. This is a helper function for package-level logging setup."""
+    set_logger(package_name, mode='both', level='INFO', logging_filepath=logging_filepath)
+    use_logger(package_name)
+
+
+def get_package_logger(package_name: str) -> logging.Logger:
+    """General function to get a package logger, for use by sub-packages."""
+    return get_logger(package_name)
 
 
 set_logger(YoungerHandle.MainName, mode='console', level='INFO', show_setting_log=False)
