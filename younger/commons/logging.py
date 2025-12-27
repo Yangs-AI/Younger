@@ -6,7 +6,7 @@
 # Author: Jason Young (杨郑鑫).
 # E-Mail: AI.Jason.Young@outlook.com
 # Last Modified by: Jason Young (杨郑鑫)
-# Last Modified time: 2025-12-27 02:57:05
+# Last Modified time: 2025-12-27 03:17:00
 # Copyright (c) 2024 Yangs.AI
 # 
 # This source code is licensed under the Apache License 2.0 found in the
@@ -83,7 +83,7 @@ def set_logger(
     if mode in {'both', 'file'}:
         if logging_filepath is None:
             logging_dirpath = pathlib.Path(os.getcwd())
-            logging_filename = 'default.log'
+            logging_filename = '.younger.log'
             logging_filepath = logging_dirpath.joinpath(logging_filename)
             naive_log(f'Logging filepath is not specified, logging file will be saved in the working directory: \'{logging_dirpath}\', filename: \'{logging_filename}\'', silence=not show_setting_log)
         else:
