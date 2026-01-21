@@ -19,6 +19,30 @@ git checkout dev
 git submodule update --init --recursive
 ```
 
+```bash
+cd Younger
+```
+
+```bash
+pip install -e .
+```
+
+```bash
+cd younger/apps/dl
+```
+
+```bash
+pip install -e .
+```
+
+```bash
+cd younger/logics/ir
+```
+
+```bash
+pip install -e .
+```
+
 ## Datasets
 Browse and download the datasets at [here](https://datasets.yangs.cloud/younger/dataset_series).
 
