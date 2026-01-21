@@ -15,15 +15,7 @@
 
 
 def split_sequence(sequence: list, split_count: int) -> list[list]:
-    avg, rmd = divmod(len(sequence), split_count)
-    splits = list()
-    start = 0
-    for i in range(split_count):
-        end = start + avg + (1 if i < rmd else 0)
-        splits.append(sequence[start:end])
-        start = end
-    return splits
-
+    pass
 
 def no_operation(*args, **kwargs):
     pass
