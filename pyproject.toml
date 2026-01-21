@@ -2,6 +2,10 @@
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+include = ["younger*"]
+exclude = ["tests*", "third_parties*"]
+
 [project]
 name = "Younger"
 description = "A Younger Project for Artificial Intelligence: Datasets, Benchmarks, and Applications."

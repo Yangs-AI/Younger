@@ -6,7 +6,7 @@
 # Author: Jason Young (杨郑鑫).
 # E-Mail: AI.Jason.Young@outlook.com
 # Last Modified by: Jason Young (杨郑鑫)
-# Last Modified time: 2025-01-03 22:00:48
+# Last Modified time: 2025-04-11 17:00:37
 # Copyright (c) 2024 Yangs.AI
 # 
 # This source code is licensed under the Apache License 2.0 found in the
@@ -103,6 +103,31 @@ def tar_extract(archive_filepath: pathlib.Path | str, wo: pathlib.Path | str, co
 
     with tarfile.open(archive_filepath, mode=mode, dereference=False) as tar:
         tar.extractall(wo)
+
+
+def load_plain(filepath: pathlib.Path | str) -> str:
+    filepath = get_system_depend_path(filepath)
+    try:
+        with open(filepath, 'r') as file:
+            string = file.read()
+    except Exception as exception:
+        logger.error(f'An Error occurred while reading str from the file: {str(exception)}')
+        raise exception
+
+    return string
+
+
+def save_plain(string: str, filepath: pathlib.Path | str) -> None:
+    filepath = get_system_depend_path(filepath)
+    try:
+        create_dir(filepath.parent)
+        with open(filepath, 'w') as file:
+            file.write(string)
+    except Exception as exception:
+        logger.error(f'An Error occurred while writing string into the file: {str(exception)}')
+        raise exception
+
+    return
 
 
 def load_json(filepath: pathlib.Path | str, cls: json.JSONDecoder | None = None) -> object:

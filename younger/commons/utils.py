@@ -2,23 +2,20 @@
 # -*- encoding=utf8 -*-
 
 ########################################################################
-# Created time: 2024-08-27 18:03:44
+# Created time: 2025-04-13 14:06:21
 # Author: Jason Young (杨郑鑫).
 # E-Mail: AI.Jason.Young@outlook.com
 # Last Modified by: Jason Young (杨郑鑫)
-# Last Modified time: 2025-04-13 15:11:50
-# Copyright (c) 2024 Yangs.AI
+# Last Modified time: 2025-04-24 10:12:35
+# Copyright (c) 2025 Yangs.AI
 # 
 # This source code is licensed under the Apache License 2.0 found in the
 # LICENSE file in the root directory of this source tree.
 ########################################################################
 
 
-from . import cache
-from . import constants
-from . import download
-from . import hash
-from . import io
-from . import logging
-from . import version
-from . import utils
+def split_sequence(sequence: list, split_count: int) -> list[list]:
+    pass
+
+def no_operation(*args, **kwargs):
+    pass
