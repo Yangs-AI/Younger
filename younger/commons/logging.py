@@ -6,7 +6,7 @@
 # Author: Jason Young (杨郑鑫).
 # E-Mail: AI.Jason.Young@outlook.com
 # Last Modified by: Jason Young (杨郑鑫)
-# Last Modified time: 2025-01-10 10:12:16
+# Last Modified time: 2025-12-27 03:17:00
 # Copyright (c) 2024 Yangs.AI
 # 
 # This source code is licensed under the Apache License 2.0 found in the
@@ -20,7 +20,6 @@ import pathlib
 import logging
 
 from typing import Literal
-from logging import Logger
 
 from younger.commons.constants import YoungerHandle
 
@@ -47,12 +46,18 @@ def naive_log(message: str, silence: bool = False):
         return
 
 
-def get_logger(name: str) -> logging.Logger:
+def get_logger(name: str, auto_create: bool = True) -> logging.Logger:
     try:
         logger = logger_dict[name]
     except Exception as exception:
-        naive_log(f'Logger: \'{name}\' Does Not Exist. Now Using Default Logger [Only Show On Console]. Warn: {exception}')
-        logger = set_logger(name, mode='console')
+        if auto_create:
+            naive_log(f'Logger: "{name}" Does Not Exist. Now Using Default Logger [Only Show On Console]. Warn: {exception}')
+            logger = set_logger(name, mode='console')
+        else:
+            # Return a bare logger without configuring handlers to avoid side effects.
+            # You must call equip_logger() before using this logger to ensure the logging handlers are properly set up.
+            # This is useful to avoid additional side effects during module import.
+            logger = logging.getLogger(name)
 
     return logger
 
@@ -78,7 +83,7 @@ def set_logger(
     if mode in {'both', 'file'}:
         if logging_filepath is None:
             logging_dirpath = pathlib.Path(os.getcwd())
-            logging_filename = 'default.log'
+            logging_filename = '.younger.log'
             logging_filepath = logging_dirpath.joinpath(logging_filename)
             naive_log(f'Logging filepath is not specified, logging file will be saved in the working directory: \'{logging_dirpath}\', filename: \'{logging_filename}\'', silence=not show_setting_log)
         else:
@@ -109,6 +114,17 @@ def set_logger(
 def use_logger(name: str):
     global logger
     logger = get_logger(name)
+
+
+def equip_package_logger(package_name: str, logging_filepath: pathlib.Path | str | None = None):
+    """Configure the logger for a specific package. This is a helper function for package-level logging setup."""
+    set_logger(package_name, mode='both', level='INFO', logging_filepath=logging_filepath)
+    use_logger(package_name)
+
+
+def get_package_logger(package_name: str, auto_create: bool = True) -> logging.Logger:
+    """General function to get a package logger, for use by sub-packages."""
+    return get_logger(package_name, auto_create=auto_create)
 
 
 set_logger(YoungerHandle.MainName, mode='console', level='INFO', show_setting_log=False)
