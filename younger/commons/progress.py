@@ -6,7 +6,7 @@
 # Author: Jason Young (杨郑鑫).
 # E-Mail: AI.Jason.Young@outlook.com
 # Last Modified by: Jason Young (杨郑鑫)
-# Last Modified time: 2026-01-22 22:37:45
+# Last Modified time: 2026-01-23 12:19:21
 # Copyright (c) 2025 Yangs.AI
 # 
 # This source code is licensed under the Apache License 2.0 found in the
@@ -15,154 +15,133 @@
 
 
 import tqdm
+import queue
+import atexit
+import threading
 import multiprocessing
-
-from typing import Any
-from contextlib import contextmanager
 
 
 class MultipleProcessProgressManager:
     """
-    A utility class to manage progress tracking across multiple processes.
+    A simple manager for tracking progress across multiple processes.
 
-    This manager uses a Queue to collect progress updates from worker processes and displays them in a unified progress bar in the main process.
+    Workers just call manager.update(n) to report progress - everything else is automatic!
 
-    Key Features:
-    - Automatic queue creation and serialization handling
-    - Configurable update percentage at initialization
-    - Unified handling for single and multi-process modes
-    - Simple API: just pass manager to worker, call update() in loop
+    Usage:
+        manager = MultipleProcessProgressManager(percent=0.1)
 
-    Example usage:
-        # In main process:
-        mppmanager = MultipleProcessProgressManager(worker_number=4, step=0.01)
-        tasks = [(seq, mppmanager) for seq in seqs]
-
-        with mppmanager.progress(total=len(tasks), desc='Processing') as progress:
-            with multiprocessing.Pool(processes=4) as pool:
-                for result in pool.imap(worker_func, tasks):
-                    progress.update()
-
-        # In worker process:
-        def worker_function(parameters):
-            seq, manager = parameters
-            for i, item in enumerate(seq):
-                # Do work...
-                manager.update(i, len(seq))  # Automatically sends at intervals
-            manager.send_final()  # Send final update
+        def worker(chunk, manager):
+            for item in chunk:
+                process(item)
+                manager.update(1)  # Just report items
             return result
+
+        sequence = [...]
+        total_items = len(sequence)
+        chunks = split_sequence(sequence, chunk_number=number_of_processes*4)
+        tasks = [(chunk, manager) for chunk in chunks]
+        with manager.progress(total=total_items, desc='Processing'):
+            with multiprocessing.Pool(4) as pool:
+                results = list(pool.imap_unordered(worker, tasks))
+            # Progress bar closes automatically, updates flushed
     """
 
-    def __init__(self, worker_number: int = 1, step: float = 0.005):
+    def __init__(self, percent: float):
         """
         Initialize the progress manager.
 
         Args:
-            worker_number: Number of worker processes (1 for single-process mode)
-            step: Percentage interval for progress updates (default: 0.005 = 0.5%)
+            percent: Percentage of total items for IPC batching. The effective interval is
+                     max(1, int(total * percent / 100)) for each progress run.
         """
-        self.worker_number = worker_number
-        self.step = step
-        self.queue = multiprocessing.Manager().Queue()
+        self._queue_ = multiprocessing.Manager().Queue()
+        self._percent_ = percent
+        self._interval_ = 1
+        self._accumulated_ = 0
 
     def __getstate__(self):
-        """Custom serialization for multiprocessing."""
+        """Serialization for multiprocessing."""
         return {
-            'queue': self.queue,
-            'worker_number': self.worker_number,
-            'step': self.step
+            '_queue_': self._queue_,
+            '_percent_': self._percent_,
+            '_interval_': self._interval_,
+            '_accumulated_': 0
         }
 
     def __setstate__(self, state):
-        """Custom deserialization for multiprocessing."""
-        self.queue = state['queue']
-        self.worker_number = state['worker_number']
-        self.step = state['step']
+        """Deserialization for multiprocessing."""
+        self._queue_ = state['_queue_']
+        self._percent_ = state['_percent_']
+        self._interval_ = state.get('_interval_', 1)
+        self._accumulated_ = 0
+        # Ensure remaining accumulated progress is flushed when the worker process exits
+        atexit.register(self.flush)
 
-    def update(self, current_index: int, total: int):
+    def flush(self):
+        """Flush any remaining accumulated progress into the queue."""
+        if self._accumulated_ > 0:
+            self._queue_.put(self._accumulated_)
+            self._accumulated_ = 0
+
+    def update(self, n: int):
         """
-        Automatically send progress update at configured intervals.
-        Call this in your worker loop - it will only send at appropriate times.
+        Report progress from worker process (batched for efficiency).
 
         Args:
-            current_index: Current iteration index (0-based)
-            total: Total number of items
-
-        Example:
-            for i, item in enumerate(data):
-                # Do work...
-                manager.update(i, len(data))
+            n: Number of items completed
         """
-        update_interval = max(1, int(total * self.step))
-        if current_index > 0 and current_index % update_interval == 0:
-            self.queue.put(update_interval)
+        self._accumulated_ += n
+        if self._accumulated_ >= self._interval_:
+            self._queue_.put(self._accumulated_)
+            self._accumulated_ = 0
 
-    def final(self, total: int):
-        """
-        Send final progress update with remaining items. Call at end of worker function.
-
-        Args:
-            total: Total number of items processed in this worker
-        """
-        update_interval = max(1, int(total * self.step))
-        last_reported_index = (total // update_interval) * update_interval
-        remaining = total - last_reported_index
-        if remaining > 0:
-            self.queue.put(remaining)
-
-    @contextmanager
     def progress(self, total: int, desc: str = 'Processing'):
         """
-        Context manager for tracking progress with a unified progress bar.
+        Context manager for real-time progress tracking across multiprocessing.
+
+        Just use it as context manager - all progress updates from workers are automatic!
 
         Args:
-            total: Total number of items/tasks to process
-            desc: Description for the progress bar
-
-        Yields:
-            ProgressTracker: Object with update() method to handle progress
+            total: Total items to track
+            desc: Progress bar description
 
         Example:
-            with manager.progress(total=100, desc='Loading') as tracker:
+            with manager.progress(total=1000, desc='Processing'):
                 with multiprocessing.Pool(4) as pool:
-                    for result in pool.imap(func, tasks):
-                        tracker.update() # Updates progress bar and drains queue
+                    results = list(pool.imap_unordered(worker, tasks))
         """
 
-        class ProgressTracker:
-            def __init__(self, queue: multiprocessing.Queue, progress_bar: tqdm.tqdm):
-                self.queue = queue
-                self.progress_bar = progress_bar
+        # Compute effective interval based on total and percent
+        self._interval_ = max(1, int(total * self._percent_ / 100))
 
-            def update(self, n: int = 1):
-                """Update the progress bar and drain queue messages."""
-                # Drain queue messages
-                while not self.queue.empty():
+        pbar = tqdm.tqdm(total=total, desc=desc)
+        stop_event = threading.Event()
+
+        def listen():
+            """Background listener for real-time queue updates."""
+            while not stop_event.is_set():
+                try:
+                    pbar.update(self._queue_.get(timeout=0.1))
+                except queue.Empty:
+                    pass
+
+        # Start background listener
+        listener_thread = threading.Thread(target=listen, daemon=True)
+        listener_thread.start()
+
+        class ProgressContext:
+            def __enter__(self_ctx):
+                return self_ctx
+
+            def __exit__(self_ctx, *args):
+                stop_event.set()
+                listener_thread.join()
+                # Final drain in case there are stragglers
+                while not self._queue_.empty():
                     try:
-                        increment = self.queue.get_nowait()
-                        self.progress_bar.update(increment)
-                    except:
+                        pbar.update(self._queue_.get_nowait())
+                    except queue.Empty:
                         break
-                # Update for the completed task
-                self.progress_bar.update(n)
+                pbar.close()
 
-            def drain_remaining(self):
-                """Drain all remaining messages from the queue."""
-                while not self.queue.empty():
-                    try:
-                        increment = self.queue.get_nowait()
-                        self.progress_bar.update(increment)
-                    except:
-                        break
-
-        progress_tracker = ProgressTracker(self.queue, tqdm.tqdm(total=total, desc=desc))
-        try:
-            yield progress_tracker
-        finally:
-            # Drain any remaining messages
-            progress_tracker.drain_remaining()
-            progress_tracker.progress_bar.close()
-
-    def cleanup(self):
-        """Cleanup the manager resources. Usually not needed as Manager handles cleanup automatically."""
-        self.queue = None
+        return ProgressContext()
