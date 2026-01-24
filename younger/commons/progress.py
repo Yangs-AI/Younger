@@ -6,7 +6,7 @@
 # Author: Jason Young (杨郑鑫).
 # E-Mail: AI.Jason.Young@outlook.com
 # Last Modified by: Jason Young (杨郑鑫)
-# Last Modified time: 2026-01-23 12:19:21
+# Last Modified time: 2026-01-24 19:01:01
 # Copyright (c) 2025 Yangs.AI
 # 
 # This source code is licensed under the Apache License 2.0 found in the
@@ -95,6 +95,12 @@ class MultipleProcessProgressManager:
             self._queue_.put(self._accumulated_)
             self._accumulated_ = 0
 
+    def flush(self):
+        """Flush any remaining accumulated progress into the queue."""
+        if self._accumulated_ > 0:
+            self._queue_.put(self._accumulated_)
+            self._accumulated_ = 0
+
     def progress(self, total: int, desc: str = 'Processing'):
         """
         Context manager for real-time progress tracking across multiprocessing.
@@ -124,6 +130,14 @@ class MultipleProcessProgressManager:
                     pbar.update(self._queue_.get(timeout=0.1))
                 except queue.Empty:
                     pass
+            # After stop_event is set, do a final flush to consume any remaining items in queue
+            # This is critical because workers might flush their accumulated progress
+            # to the queue right as we're setting stop_event
+            while True:
+                try:
+                    pbar.update(self._queue_.get_nowait())
+                except queue.Empty:
+                    break
 
         # Start background listener
         listener_thread = threading.Thread(target=listen, daemon=True)
@@ -136,12 +150,8 @@ class MultipleProcessProgressManager:
             def __exit__(self_ctx, *args):
                 stop_event.set()
                 listener_thread.join()
-                # Final drain in case there are stragglers
-                while not self._queue_.empty():
-                    try:
-                        pbar.update(self._queue_.get_nowait())
-                    except queue.Empty:
-                        break
+                # The listener thread now handles final flush internally
+                # Just close the progress bar
                 pbar.close()
 
         return ProgressContext()
