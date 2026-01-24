@@ -14,6 +14,9 @@
 ########################################################################
 
 
+from typing import Iterable
+
+
 def split_sequence(sequence: list, chunk_count: int) -> list[list]:
     """
     Split a sequence into multiple chunks as evenly as possible.
