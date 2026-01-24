@@ -6,7 +6,7 @@
 # Author: Jason Young (杨郑鑫).
 # E-Mail: AI.Jason.Young@outlook.com
 # Last Modified by: Jason Young (杨郑鑫)
-# Last Modified time: 2026-01-24 19:01:01
+# Last Modified time: 2026-01-24 19:30:55
 # Copyright (c) 2025 Yangs.AI
 # 
 # This source code is licensed under the Apache License 2.0 found in the
@@ -25,7 +25,7 @@ class MultipleProcessProgressManager:
     """
     A simple manager for tracking progress across multiple processes.
 
-    Workers just call manager.update(n) to report progress - everything else is automatic!
+    Workers just call manager.update(n) to report progress and manager.done() when finished!
 
     Usage:
         manager = MultipleProcessProgressManager(percent=0.1)
@@ -34,17 +34,20 @@ class MultipleProcessProgressManager:
             for item in chunk:
                 process(item)
                 manager.update(1)  # Just report items
+            manager.done()  # Signal completion
             return result
 
         sequence = [...]
         total_items = len(sequence)
         chunks = split_sequence(sequence, chunk_number=number_of_processes*4)
         tasks = [(chunk, manager) for chunk in chunks]
-        with manager.progress(total=total_items, desc='Processing'):
+        with manager.progress(total=total_items, chunks=len(chunks), desc='Processing'):
             with multiprocessing.Pool(4) as pool:
                 results = list(pool.imap_unordered(worker, tasks))
-            # Progress bar closes automatically, updates flushed
+            # Progress bar closes automatically after all chunks signal completion
     """
+
+    _DONE_SIGNAL_ = object()  # Sentinel for chunk completion
 
     def __init__(self, percent: float):
         """
@@ -83,6 +86,11 @@ class MultipleProcessProgressManager:
             self._queue_.put(self._accumulated_)
             self._accumulated_ = 0
 
+    def done(self):
+        """Signal that this worker has completed all its work."""
+        self.flush()  # Ensure any remaining progress is sent
+        self._queue_.put(self._DONE_SIGNAL_)
+
     def update(self, n: int):
         """
         Report progress from worker process (batched for efficiency).
@@ -95,13 +103,7 @@ class MultipleProcessProgressManager:
             self._queue_.put(self._accumulated_)
             self._accumulated_ = 0
 
-    def flush(self):
-        """Flush any remaining accumulated progress into the queue."""
-        if self._accumulated_ > 0:
-            self._queue_.put(self._accumulated_)
-            self._accumulated_ = 0
-
-    def progress(self, total: int, desc: str = 'Processing'):
+    def progress(self, total: int, chunks: int, desc: str = 'Processing'):
         """
         Context manager for real-time progress tracking across multiprocessing.
 
@@ -109,10 +111,11 @@ class MultipleProcessProgressManager:
 
         Args:
             total: Total items to track
+            chunks: Total number of chunks/workers that will call done()
             desc: Progress bar description
 
         Example:
-            with manager.progress(total=1000, desc='Processing'):
+            with manager.progress(total=1000, chunks=4, desc='Processing'):
                 with multiprocessing.Pool(4) as pool:
                     results = list(pool.imap_unordered(worker, tasks))
         """
@@ -121,20 +124,17 @@ class MultipleProcessProgressManager:
         self._interval_ = max(1, int(total * self._percent_ / 100))
 
         pbar = tqdm.tqdm(total=total, desc=desc)
-        stop_event = threading.Event()
 
         def listen():
             """Background listener for real-time queue updates."""
-            while not stop_event.is_set():
+            completed_chunks = 0
+            while completed_chunks < chunks:
                 try:
-                    pbar.update(self._queue_.get(timeout=0.1))
-                except queue.Empty:
-                    pass
-            
-            # Continue draining until progress reaches total (100%)
-            while pbar.n < pbar.total:
-                try:
-                    pbar.update(self._queue_.get(timeout=0.1))
+                    msg = self._queue_.get(timeout=0.1)
+                    if msg is self._DONE_SIGNAL_:
+                        completed_chunks += 1
+                    else:
+                        pbar.update(msg)
                 except queue.Empty:
                     pass
 
@@ -147,10 +147,7 @@ class MultipleProcessProgressManager:
                 return self_ctx
 
             def __exit__(self_ctx, *args):
-                stop_event.set()
                 listener_thread.join()
-                # The listener thread now handles final flush internally
-                # Just close the progress bar
                 pbar.close()
 
         return ProgressContext()
