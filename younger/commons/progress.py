@@ -47,7 +47,7 @@ class MultipleProcessProgressManager:
             # Progress bar closes automatically after all chunks signal completion
     """
 
-    _DONE_SIGNAL_ = object()  # Sentinel for chunk completion
+    _DONE_SIGNAL_ = "__CHUNK_DONE__"  # Sentinel for chunk completion
 
     def __init__(self, percent: float):
         """
@@ -131,7 +131,7 @@ class MultipleProcessProgressManager:
             while completed_chunks < chunks:
                 try:
                     msg = self._queue_.get(timeout=0.1)
-                    if msg is self._DONE_SIGNAL_:
+                    if msg == self._DONE_SIGNAL_:
                         completed_chunks += 1
                     else:
                         pbar.update(msg)
