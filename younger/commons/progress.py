@@ -130,14 +130,13 @@ class MultipleProcessProgressManager:
                     pbar.update(self._queue_.get(timeout=0.1))
                 except queue.Empty:
                     pass
-            # After stop_event is set, do a final flush to consume any remaining items in queue
-            # This is critical because workers might flush their accumulated progress
-            # to the queue right as we're setting stop_event
-            while True:
+            
+            # Continue draining until progress reaches total (100%)
+            while pbar.n < pbar.total:
                 try:
-                    pbar.update(self._queue_.get_nowait())
+                    pbar.update(self._queue_.get(timeout=0.1))
                 except queue.Empty:
-                    break
+                    pass
 
         # Start background listener
         listener_thread = threading.Thread(target=listen, daemon=True)
