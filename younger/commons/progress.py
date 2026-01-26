@@ -6,7 +6,7 @@
 # Author: Jason Young (杨郑鑫).
 # E-Mail: AI.Jason.Young@outlook.com
 # Last Modified by: Jason Young (杨郑鑫)
-# Last Modified time: 2026-01-24 19:30:55
+# Last Modified time: 2026-01-26 15:20:55
 # Copyright (c) 2025 Yangs.AI
 # 
 # This source code is licensed under the Apache License 2.0 found in the
@@ -61,6 +61,7 @@ class MultipleProcessProgressManager:
         self._percent_ = percent
         self._interval_ = 1
         self._accumulated_ = 0
+        self._done_sent_ = False
 
     def __getstate__(self):
         """Serialization for multiprocessing."""
@@ -68,7 +69,8 @@ class MultipleProcessProgressManager:
             '_queue_': self._queue_,
             '_percent_': self._percent_,
             '_interval_': self._interval_,
-            '_accumulated_': 0
+            '_accumulated_': 0,
+            '_done_sent_': False,
         }
 
     def __setstate__(self, state):
@@ -77,8 +79,14 @@ class MultipleProcessProgressManager:
         self._percent_ = state['_percent_']
         self._interval_ = state.get('_interval_', 1)
         self._accumulated_ = 0
+        self._done_sent_ = False
         # Ensure remaining accumulated progress is flushed when the worker process exits
-        atexit.register(self.flush)
+        atexit.register(self._finalize_)
+
+    def _finalize_(self):
+        """Ensure pending updates and a completion signal are sent on process exit."""
+        self.flush()
+        self.done()
 
     def flush(self):
         """Flush any remaining accumulated progress into the queue."""
@@ -88,8 +96,11 @@ class MultipleProcessProgressManager:
 
     def done(self):
         """Signal that this worker has completed all its work."""
+        if self._done_sent_:
+            return
         self.flush()  # Ensure any remaining progress is sent
         self._queue_.put(self._DONE_SIGNAL_)
+        self._done_sent_ = True
 
     def update(self, n: int):
         """
