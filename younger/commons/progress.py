@@ -6,7 +6,7 @@
 # Author: Jason Young (杨郑鑫).
 # E-Mail: AI.Jason.Young@outlook.com
 # Last Modified by: Jason Young (杨郑鑫)
-# Last Modified time: 2026-01-26 15:20:55
+# Last Modified time: 2026-01-26 15:39:49
 # Copyright (c) 2025 Yangs.AI
 # 
 # This source code is licensed under the Apache License 2.0 found in the
@@ -114,7 +114,7 @@ class MultipleProcessProgressManager:
             self._queue_.put(self._accumulated_)
             self._accumulated_ = 0
 
-    def progress(self, total: int, chunks: int, desc: str = 'Processing'):
+    def progress(self, total: int, chunks: int, desc: str = 'Processing', join_timeout: float = 5.0):
         """
         Context manager for real-time progress tracking across multiprocessing.
 
@@ -124,6 +124,7 @@ class MultipleProcessProgressManager:
             total: Total items to track
             chunks: Total number of chunks/workers that will call done()
             desc: Progress bar description
+            join_timeout: Timeout (seconds) for listener thread to complete before forced shutdown
 
         Example:
             with manager.progress(total=1000, chunks=4, desc='Processing'):
@@ -135,19 +136,26 @@ class MultipleProcessProgressManager:
         self._interval_ = max(1, int(total * self._percent_ / 100))
 
         pbar = tqdm.tqdm(total=total, desc=desc)
+        listener_exception = None  # Capture listener thread exceptions
 
         def listen():
             """Background listener for real-time queue updates."""
-            completed_chunks = 0
-            while completed_chunks < chunks:
-                try:
-                    msg = self._queue_.get(timeout=0.1)
-                    if msg == self._DONE_SIGNAL_:
-                        completed_chunks += 1
-                    else:
-                        pbar.update(msg)
-                except queue.Empty:
-                    pass
+            nonlocal listener_exception
+            try:
+                completed_chunks = 0
+                while completed_chunks < chunks:
+                    try:
+                        msg = self._queue_.get(timeout=0.5)
+                        if msg == self._DONE_SIGNAL_:
+                            completed_chunks += 1
+                        else:
+                            pbar.update(msg)
+                    except queue.Empty:
+                        # Continue waiting; worker processes may still be running
+                        pass
+            except Exception as exc:
+                # Capture exceptions in the listener to report later
+                listener_exception = exc
 
         # Start background listener
         listener_thread = threading.Thread(target=listen, daemon=True)
@@ -158,7 +166,13 @@ class MultipleProcessProgressManager:
                 return self_ctx
 
             def __exit__(self_ctx, *args):
-                listener_thread.join()
+                # Gracefully wait for listener with timeout to prevent indefinite hangs
+                listener_thread.join(timeout=join_timeout)
                 pbar.close()
 
+                # If listener thread encountered an exception, surface it
+                if listener_exception is not None:
+                    raise listener_exception
+
         return ProgressContext()
+
