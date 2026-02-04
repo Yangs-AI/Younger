@@ -1,0 +1,13 @@
+{
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}",
+        "${workspaceFolder}/younger",
+        "${workspaceFolder}/younger/apps/dl",
+        "${workspaceFolder}/younger/logics/ir",
+        "${workspaceFolder}/younger/logics/core"
+    ],
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.python",
+        "editor.formatOnSave": true
+    }
+}
