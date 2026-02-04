@@ -2,9 +2,9 @@
 
 This repository maintains all code related to using the Younger dataset and its related applications.
 
-Go to the website "[Datasets - Yangs Cloud](https://datasets.yangs.cloud/)" for [Detailed Documentation](https://datasets.yangs.cloud/younger/) of Younger's Applications.
+Go to the website "[Datasets - Yangs AI](https://datasets.yangs.ai/)" for [Detailed Documentation](https://datasets.yangs.ai/younger/) of Younger's Applications.
 
-Due to ongoing updates to this branch, the code may not match the initial version presented in the paper. Therefore, if you need the version that corresponds to what is mentioned in the paper, please switch to the `paper` [branch](https://github.com/YangsCloud/Younger/tree/paper) for reference.
+Due to ongoing updates to this branch, the code may not match the initial version presented in the paper. Therefore, if you need the version that corresponds to what is mentioned in the paper, please switch to the `paper` [branch](https://github.com/Yangs-AI/Younger/tree/paper) for reference.
 
 ## Installation
 
@@ -32,7 +32,7 @@ pip install "younger[tools]"
 This repo includes multiple sub-packages. Use editable installs for local development.
 
 ```bash
-git clone --recursive git@github.com:Jason-Young-AI/Younger.git
+git clone --recursive git@github.com:Yangs-AI/Younger.git
 cd Younger
 git checkout dev
 git submodule update --init --recursive
@@ -83,7 +83,7 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, branching, 
 Maintainers can follow [RELEASE.md](RELEASE.md) for publishing order and release checklist.
 
 ## Datasets
-Browse and download the datasets at [here](https://datasets.yangs.cloud/younger/dataset_series).
+Browse and download the datasets at [here](https://datasets.yangs.ai/younger/dataset_series).
 It may take some time to prepare the datasets for the first release. Please stay tuned.
 In future releases, we will provide features to automatically download and preprocess the datasets.
 

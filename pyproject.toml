@@ -11,7 +11,7 @@ name = "Younger"
 description = "A Younger Project for Artificial Intelligence: Datasets, Benchmarks, and Applications."
 version = "0.0.1a2"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = {text = "Apache Software License"}
 keywords = ["Younger", "Benchmark", "Artificial Intelligence"]
 authors = [{name = "Jason-Young-AI", email = "AI.Jason.Young@outlook.com"}]

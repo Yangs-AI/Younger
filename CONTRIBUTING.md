@@ -11,9 +11,37 @@ This document explains how to develop and contribute to this repository.
 ## Development environment
 Use Python 3.12+ with a dedicated virtual environment.
 
+If you plan to contribute, fork the repo first and clone your fork (recommended). After cloning, add the upstream remote for syncing:
+
 ```bash
-git clone --recursive git@github.com:Yangs-AI/Younger.git
+git clone --recursive git@github.com:<your-username>/Younger.git
 cd Younger
+git remote add upstream git@github.com:Yangs-AI/Younger.git
+```
+
+Typical developer workflow (commands):
+
+```bash
+# 1) Sync with upstream
+git fetch upstream
+git checkout dev
+git pull --rebase upstream dev
+
+# 2) Create a feature branch
+git checkout -b feat/my-change
+
+# 3) Make changes and commit
+git add .
+git commit -m "feat: my change"
+
+# 4) Push to your fork
+git push origin feat/my-change
+
+# 5) Open a PR from your fork branch to upstream dev
+```
+
+### Install from source (editable)
+```bash
 git checkout dev
 git submodule update --init --recursive
 
@@ -98,12 +126,12 @@ Recommended PR content:
 This repo uses git submodules for component packages. In a fork, you have two options:
 
 1) Keep upstream submodules (recommended):
-	- Do nothing. Submodules continue to point to the upstream Yangs-AI repos.
+   - Do nothing. Submodules continue to point to the upstream Yangs-AI repos.
 
 2) Use your own forks (when you need to modify a submodule):
-	- Fork the submodule repo you plan to modify.
-	- Update the submodule URL in [.gitmodules](.gitmodules) to your fork.
-	- Sync and update submodules:
+   - Fork the submodule repo you plan to modify.
+   - Update the submodule URL in [.gitmodules](.gitmodules) to your fork.
+   - Sync and update submodules:
 
 ```bash
 git submodule sync --recursive
@@ -122,11 +150,11 @@ Maintainers keep the official [.gitmodules](.gitmodules) pointing to upstream Ya
 
 ### Who should update submodule pointers?
 - **Contributors (developers):**
-	- Do **not** commit submodule pointer updates in the parent repo unless explicitly requested.
-	- Submit changes in the submodule repo itself (your fork or a PR to upstream).
+  - Do **not** commit submodule pointer updates in the parent repo unless explicitly requested.
+  - Submit changes in the submodule repo itself (your fork or a PR to upstream).
 - **Maintainers:**
-	- Decide when to update submodule pointers in the parent repo.
-	- Verify compatibility across packages before bumping submodule hashes.
+  - Decide when to update submodule pointers in the parent repo.
+  - Verify compatibility across packages before bumping submodule hashes.
 
 If your change requires a submodule pointer update, mention it in your PR description instead of updating it yourself.
 
