@@ -6,7 +6,7 @@
 # Author: Jason Young (杨郑鑫).
 # E-Mail: AI.Jason.Young@outlook.com
 # Last Modified by: Jason Young (杨郑鑫)
-# Last Modified time: 2025-01-06 20:50:56
+# Last Modified time: 2026-02-04 10:00:59
 # Copyright (c) 2024 Yangs.AI
 # 
 # This source code is licensed under the Apache License 2.0 found in the
@@ -43,6 +43,26 @@ class CachedChunks(object):
     _config_cache_filename_ = 'config'
     _chunks_cache_filename_ = 'chunks'
     def __init__(self, cache_dirpath: pathlib.Path, iterator: Iterator, size_of_chunk: int):
+        """
+        Cache an iterator to disk in fixed-size chunks and resume later.
+
+        Behavior notes:
+        - __len__() returns the total number of items in the original iterator
+            (not the number of chunks).
+        - Iteration yields chunks (lists) of items, each with size <= size_of_chunk.
+            This reduces IO overhead and supports large datasets.
+
+        Typical use cases:
+        - Datasets too large to fit in memory.
+        - Long-running data collection with resumable progress.
+
+        :param cache_dirpath: Directory path where cache files will be stored.
+        :type cache_dirpath: pathlib.Path
+        :param iterator: The iterator whose chunks are to be cached.
+        :type iterator: Iterator
+        :param size_of_chunk: The number of items in each chunk.
+        :type size_of_chunk: int
+        """
         self._cache_dirpath = cache_dirpath
         self._status_filepath = self._cache_dirpath.joinpath(self.__class__._status_cache_filename_)
         self._config_filepath = self._cache_dirpath.joinpath(self.__class__._config_cache_filename_)
@@ -84,14 +104,16 @@ class CachedChunks(object):
             save_pickle(self._current_index, self._status_filepath)
 
     def __iter__(self):
-        while self._current_index < self._num_of_chunks:
-            chunk = load_pickle(self._chunks_filepath.with_suffix(f'.{self._current_index}'))
-            yield chunk
-            self._current_index += 1
-            save_pickle(self._current_index, self._status_filepath)
+        return self
 
     def __next__(self):
-        return next(self)
+        if self._current_index >= self._num_of_chunks:
+            raise StopIteration
+
+        chunk = load_pickle(self._chunks_filepath.with_suffix(f'.{self._current_index}'))
+        self._current_index += 1
+        save_pickle(self._current_index, self._status_filepath)
+        return chunk
 
     def __len__(self):
         return self._length_of_itr
