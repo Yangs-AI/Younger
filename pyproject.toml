@@ -9,9 +9,9 @@ exclude = ["tests*", "third_parties*"]
 [project]
 name = "Younger"
 description = "A Younger Project for Artificial Intelligence: Datasets, Benchmarks, and Applications."
-version = "0.0.1alpha2"
+version = "0.0.1a2"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = {text = "Apache Software License"}
 keywords = ["Younger", "Benchmark", "Artificial Intelligence"]
 authors = [{name = "Jason-Young-AI", email = "AI.Jason.Young@outlook.com"}]
@@ -38,8 +38,7 @@ dependencies = [
     "click",
     "fsspec",
     "psutil",
-    "tomlkit",
-    "python-semantic-release"
+    "tomlkit"
 ]
 
 [project.optional-dependencies]
@@ -69,7 +68,8 @@ logics-core = [
 ]
 
 develop = [
-    "sphinx"
+    "sphinx",
+    "python-semantic-release"
 ]
 
 [project.urls]
