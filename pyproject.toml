@@ -38,7 +38,8 @@ dependencies = [
     "click",
     "fsspec",
     "psutil",
-    "tomlkit"
+    "tomlkit",
+    "requests",
 ]
 
 [project.optional-dependencies]
