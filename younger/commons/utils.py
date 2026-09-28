@@ -6,7 +6,7 @@
 # Author: Jason Young (杨郑鑫).
 # E-Mail: AI.Jason.Young@outlook.com
 # Last Modified by: Jason Young (杨郑鑫)
-# Last Modified time: 2025-04-24 10:12:35
+# Last Modified time: 2026-09-28 21:26:47
 # Copyright (c) 2025 Yangs.AI
 # 
 # This source code is licensed under the Apache License 2.0 found in the
@@ -14,7 +14,46 @@
 ########################################################################
 
 
-from typing import Iterable
+import time
+import random
+from typing import Iterable, Callable, TypeVar
+
+T = TypeVar("T")
+
+
+def retry(operation: Callable[[], T], should_retry: Callable[[Exception], bool], max_attempts: int = 4, max_delay: float = 30) -> T:
+    """Execute an operation with capped exponential backoff.
+
+    Args:
+        operation: Operation to execute.
+        should_retry: Predicate deciding whether an exception is retryable.
+        max_attempts: Maximum number of execution attempts, including the first.
+        max_delay: Maximum delay between attempts, in seconds.
+
+    Returns:
+        The result returned by ``operation``.
+
+    Raises:
+        ValueError: If ``max_attempts`` or ``max_delay`` is invalid.
+        Exception: The last exception raised by ``operation``.
+    """
+    if max_attempts < 1:
+        raise ValueError("max_attempts must be at least 1")
+    if max_delay < 0:
+        raise ValueError("max_delay must be at least 0")
+
+    for attempt in range(max_attempts):
+        try:
+            return operation()
+        except Exception as exception:
+            if not should_retry(exception) or attempt == max_attempts - 1:
+                raise
+
+            delay = min(max_delay, 2**attempt)
+            time.sleep(delay)
+
+    raise RuntimeError("unreachable")
+
 
 
 def split_sequence(sequence: list, chunk_count: int) -> list[list]:
@@ -54,4 +93,3 @@ def shuffle_sequence(sequence: Iterable) -> Iterable:
 
 def no_operation(*args, **kwargs) -> None:
     return None
-
