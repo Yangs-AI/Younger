@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 
 import requests
 
-from younger.commons.cache import load_cache_metadata, save_cache_metadata
+from younger.commons.metadata import load_file_metadata, save_file_metadata
 from younger.commons.download import retry_http
 from younger.commons.hash import hash_json
 from younger.commons.io import atomic_write_path, directory_lock, save_json
@@ -54,35 +54,35 @@ class StorageTests(unittest.TestCase):
                 save_json(object(), target, atomic=True)
             self.assertEqual(json.loads(target.read_text(encoding='utf-8')), data)
 
-    def test_cache_metadata_round_trip_and_caller_comparison(self):
+    def test_file_metadata_round_trip_and_caller_comparison(self):
         with tempfile.TemporaryDirectory() as root:
             target = pathlib.Path(root) / 'data.nc'
-            expected = {'inputs': {'version': 1, 'options': ['中文', True, None]}, 'file': {'size': 0}, 'extra': {}}
-            self.assertIsNone(load_cache_metadata(target))
-            save_cache_metadata(expected, target)
+            expected = {'conf': {'version': 1, 'options': ['中文', True, None]}, 'file': {'size': 0, 'hash': hashlib.sha256(b'').hexdigest()}, 'info': {}}
+            self.assertIsNone(load_file_metadata(target))
+            save_file_metadata(expected, target)
             self.assertFalse(target.exists())
-            self.assertEqual(load_cache_metadata(target), expected)
-            self.assertNotEqual(load_cache_metadata(target), {'version': 2})
+            self.assertEqual(load_file_metadata(target), expected)
+            self.assertNotEqual(load_file_metadata(target), {'version': 2})
             target.write_bytes(b'cache content')
-            self.assertEqual(load_cache_metadata(target), expected)
+            self.assertEqual(load_file_metadata(target), expected)
             other = target.with_suffix('.csv')
-            save_cache_metadata({'inputs': {}, 'file': {'size': 0}, 'extra': {}}, other)
-            self.assertEqual(load_cache_metadata(other), {'inputs': {}, 'file': {'size': 0}, 'extra': {}})
-            self.assertEqual(load_cache_metadata(target), expected)
+            save_file_metadata({'conf': {}, 'file': {'size': 0, 'hash': hashlib.sha256(b'').hexdigest()}, 'info': {}}, other)
+            self.assertEqual(load_file_metadata(other), {'conf': {}, 'file': {'size': 0, 'hash': hashlib.sha256(b'').hexdigest()}, 'info': {}})
+            self.assertEqual(load_file_metadata(target), expected)
             with self.assertRaises(TypeError):
-                save_cache_metadata({'unsupported': object()}, target)
-            self.assertEqual(load_cache_metadata(target), expected)
+                save_file_metadata({'unsupported': object()}, target)
+            self.assertEqual(load_file_metadata(target), expected)
 
-    def test_cache_metadata_missing_or_malformed(self):
+    def test_file_metadata_missing_or_malformed(self):
         with tempfile.TemporaryDirectory() as root:
             target = pathlib.Path(root) / 'data'
             metadata_path = target.with_name(target.name + '.metadata.json')
             for malformed in (b'{', b'[]', b'null', b'42', b'\xff'):
                 metadata_path.write_bytes(malformed)
-                self.assertIsNone(load_cache_metadata(target))
-            with patch.object(pathlib.Path, 'read_text', side_effect=PermissionError):
+                self.assertIsNone(load_file_metadata(target))
+            with patch('younger.commons.metadata.load_json', side_effect=PermissionError):
                 with self.assertRaises(PermissionError):
-                    load_cache_metadata(target)
+                    load_file_metadata(target)
 
     def test_lock_contention_and_release_after_exception(self):
         script = (

@@ -14,113 +14,16 @@
 ########################################################################
 
 
-import json
-import stat
 import tqdm
 import pathlib
 
-from typing import NotRequired, Callable, Iterator, TypedDict, cast
+from typing import Iterator
 
-from younger.commons.io import load_pickle, save_pickle, load_json, save_json
-from younger.commons.hash import hash_file
+from younger.commons.io import load_pickle, save_pickle
 from younger.commons.constants import YoungerHandle
 
 
 CACHE_ROOT: pathlib.Path = pathlib.Path.home().joinpath(f'.cache/{YoungerHandle.MainName}')
-
-
-class CacheFileMetadata(TypedDict):
-    size: int
-    hash: str
-
-
-class CacheMetadata(TypedDict):
-    conf: dict
-    info: dict
-    file: CacheFileMetadata
-
-
-def _metadata_path_(filepath: pathlib.Path) -> pathlib.Path:
-    return filepath.with_name(f'{filepath.name}.metadata.json')
-
-
-def load_cache_metadata(filepath: pathlib.Path) -> CacheMetadata | None:
-    """Load structurally valid metadata, or None if missing or malformed.
-
-    This validates metadata fields only, not the cache file. Other filesystem
-    errors propagate. Expected cache misses do not emit error logs.
-    """
-    try:
-        metadata = load_json(_metadata_path_(filepath))
-    except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError):
-        return None
-
-    if not isinstance(metadata, dict):
-        return None
-    if not isinstance(metadata.get('conf'), dict):
-        return None
-
-    file_metadata = metadata.get('file')
-    if not isinstance(file_metadata, dict):
-        return None
-
-    file_size = file_metadata.get('size')
-    if not isinstance(file_size, int) or isinstance(file_size, bool) or file_size < 0:
-        return None
-    file_hash = file_metadata.get('hash')
-    if not isinstance(file_hash, str):
-        return None
-    return cast(CacheMetadata, metadata)
-
-
-def save_cache_metadata(metadata: CacheMetadata, filepath: pathlib.Path) -> None:
-    """Atomically save metadata beside a cache file without modifying the data.
-
-    Use JSON-native values and string keys for round-trip equality.
-    """
-    save_json(metadata, _metadata_path_(filepath), indent=2, atomic=True)
-
-
-def build_cache_metadata(filepath: pathlib.Path, conf: dict, info: dict) -> CacheMetadata:
-    """Build metadata describing an existing cache file, without saving it.
-
-    conf contains every field required for reuse; info is informational.
-    Keep the file unchanged while building and saving metadata, using
-    directory_lock when coordinating shared caches.
-    """
-    file_stat = filepath.stat()
-
-    if not stat.S_ISREG(file_stat.st_mode):
-        raise ValueError(f'Cache path is not a regular file: {filepath}')
-    file_metadata: CacheFileMetadata = {'size': file_stat.st_size, 'hash': hash_file(filepath)}
-
-    return {'conf': conf, 'info': info, 'file': file_metadata}
-
-
-def is_cache_valid(filepath: pathlib.Path, expected_conf: dict, validator: Callable[[pathlib.Path], bool] | None = None) -> bool:
-    """Check all inputs, file existence/size, hash and optional content.
-
-    Compare inputs exactly, including nested fields; ignore extra. Hash checks
-    require a stored SHA-256 digest. Set verify_hash=False for size-only checks.
-    The validator runs last and returns False for invalid content; its exceptions
-    propagate. Missing files during stat/hash return False; other IO errors
-    propagate. Coordinate validation and subsequent use with cache writers.
-    """
-    metadata = load_cache_metadata(filepath)
-    if metadata is None or metadata['conf'] != expected_conf:
-        return False
-    file_metadata = metadata['file']
-    try:
-        file_stat = filepath.stat()
-        if not stat.S_ISREG(file_stat.st_mode):
-            return False
-        if file_stat.st_size != file_metadata['size']:
-            return False
-        if hash_file(filepath) != file_metadata['hash']:
-            return False
-    except FileNotFoundError:
-        return False
-    return validator(filepath) if validator is not None else True
 
 
 def set_cache_root(dirpath: pathlib.Path) -> None:
