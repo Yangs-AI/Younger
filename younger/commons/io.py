@@ -6,7 +6,7 @@
 # Author: Jason Young (杨郑鑫).
 # E-Mail: AI.Jason.Young@outlook.com
 # Last Modified by: Jason Young (杨郑鑫)
-# Last Modified time: 2025-04-11 17:00:37
+# Last Modified time: 2026-09-28 21:25:39
 # Copyright (c) 2024 Yangs.AI
 # 
 # This source code is licensed under the Apache License 2.0 found in the
@@ -15,19 +15,89 @@
 
 
 import os
+import time
 import math
 import json
+import errno
 import pickle
 import psutil
 import shutil
 import tarfile
 import pathlib
 import tomlkit
+import tempfile
+import contextlib
 
 from typing import Any
 
 from younger.commons.hash import hash_bytes
 from younger.commons.logging import logger
+
+
+@contextlib.contextmanager
+def directory_lock(dirpath: pathlib.Path, wait: bool = False):
+    """Cooperatively lock a directory across processes; retain the .lock file.
+
+    All writers must use this lock. Do not delete the lock file or its directory
+    while it may be in use. With wait=True, wait until the lock is available.
+    Closing the handle (including process exit) releases the OS-owned lock.
+    """
+    dirpath.mkdir(parents=True, exist_ok=True)
+    with (dirpath / '.lock').open('a+b') as handle:
+        if os.name == 'nt':
+            import msvcrt
+
+            while True:
+                handle.seek(0)
+                try:
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                    break
+                except OSError as exc:
+                    if exc.errno not in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
+                        raise
+                    if not wait:
+                        raise RuntimeError(f'Another process is using {dirpath}') from exc
+                    time.sleep(0.1)
+            try:
+                yield
+            finally:
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+        if os.name == 'posix':
+            import fcntl
+
+            try:
+                fcntl.flock(handle, fcntl.LOCK_EX | (0 if wait else fcntl.LOCK_NB))
+            except OSError as e:
+                if e.errno not in (errno.EACCES, errno.EAGAIN):
+                    raise
+                raise RuntimeError(f'Another process is using {dirpath}') from e
+            try:
+                yield
+            finally:
+                fcntl.flock(handle, fcntl.LOCK_UN)
+
+
+@contextlib.contextmanager
+def atomic_write_path(filepath: pathlib.Path):
+    """Yield a unique temporary path beside the target, then replace on success.
+
+    Close all writers before leaving the context. On failure the old target is
+    preserved and the temporary file removed. This provides atomic visibility,
+    not power-loss durability or coordination between concurrent writers.
+    """
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+
+    descriptor, name = tempfile.mkstemp(prefix=f".{filepath.name}.tmp.", dir=filepath.parent)
+    temporary = pathlib.Path(name)
+    os.close(descriptor)
+
+    try:
+        yield temporary
+        os.replace(temporary, filepath)
+    except BaseException as e:
+        temporary.unlink(missing_ok=True)
+        raise
 
 
 def get_system_depend_path(path: pathlib.Path | str) -> pathlib.Path:
@@ -142,12 +212,17 @@ def load_json(filepath: pathlib.Path | str, cls: json.JSONDecoder | None = None)
     return serializable_object
 
 
-def save_json(serializable_object: object, filepath: pathlib.Path | str, cls: json.JSONEncoder | None = None, indent: int | str | None = None) -> None:
+def save_json(serializable_object: object, filepath: pathlib.Path | str, cls: json.JSONEncoder | None = None, indent: int | str | None = None, atomic: bool = False) -> None:
+    """Save JSON; atomic=True preserves the previous target if writing fails.
+
+    Atomic mode changes only how the file is committed, not JSON formatting.
+    """
     filepath = get_system_depend_path(filepath)
     try:
         create_dir(filepath.parent)
-        with open(filepath, 'w') as file:
-            json.dump(serializable_object, file, indent=indent, cls=cls)
+        with atomic_write_path(filepath) if atomic else contextlib.nullcontext(filepath) as output_path:
+            with open(output_path, 'w') as file:
+                json.dump(serializable_object, file, indent=indent, cls=cls)
     except Exception as exception:
         logger.error(f'An Error occurred while writing serializable object into the \'json\' file: {str(exception)}')
         raise exception

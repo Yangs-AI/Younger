@@ -23,9 +23,20 @@ Typical developer workflow (commands):
 
 ```bash
 # 1) Sync with upstream
-git fetch upstream
-git checkout dev
-git pull --rebase upstream dev
+git remote -v               # confirm origin/upstream are set correctly
+git fetch --prune upstream   # sync upstream refs and drop deleted branches
+git checkout dev             # ensure you are on the main dev branch
+git pull --rebase upstream dev  # replay local dev on top of upstream/dev
+
+# If you keep local commits on dev, rebase explicitly:
+git rebase upstream/dev      # same as above, but explicit and easier to debug
+# If conflicts happen:
+git status                   # see which files are conflicted
+# resolve files, then
+git add <conflicted-file>    # mark conflicts as resolved
+git rebase --continue        # continue replaying commits
+# to abort:
+git rebase --abort           # roll back to pre-rebase state
 
 # 2) Create a feature branch
 git checkout -b feat/my-change
@@ -87,6 +98,13 @@ If you discover a feature in a submodule that can be abstracted and reused:
 1. Extract and implement it in `younger` as a decoupled, reusable component.
 2. Update the submodule to consume the new kernel feature.
 3. Submit changes separately: one PR for `younger`, one PR for the submodule.
+
+## Submodule contributing notes
+Each submodule README includes a short contributing section with submodule-specific guidance:
+- [younger/apps/dl/README.md](https://github.com/Yangs-AI/Younger-Apps-DL/README.md)
+- [younger/logics/core/README.md](https://github.com/Yangs-AI/Younger-Logics-Core/README.md)
+- [younger/logics/ir/README.md](https://github.com/Yangs-AI/Younger-Logics-IR/README.md)
+- [younger/tools/bench/README.md](https://github.com/Yangs-AI/Younger-Tools-Bench/README.md)
 
 ## Development guidelines
 - Ensure tests pass before submitting.
