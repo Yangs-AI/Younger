@@ -189,7 +189,9 @@ Maintainers keep the official [.gitmodules](.gitmodules) pointing to upstream Ya
 If your change requires a submodule pointer update, mention it in your PR description instead of updating it yourself.
 
 ## Versioning and releases (maintainers)
-See [RELEASE.md](RELEASE.md) for the publishing order and checklist.
+For every new version, follow the [routine release checklist](RELEASE.md#routine-release).
+It covers selecting packages, updating versions and the parent combination,
+checking PRs, merging to `main`, creating tags, and verifying publication.
 
 Versioning notes:
 - Use PEP 440 versions (e.g., `0.0.1a1`, `0.1.0`, `1.0.0`).

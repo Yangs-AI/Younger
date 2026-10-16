@@ -5,6 +5,91 @@ repository builds one Python distribution, owns its version in `pyproject.toml`,
 and publishes its own GitHub Release and PyPI project. Conda distribution is
 deferred.
 
+## Routine release
+
+Use this procedure for every new version. Trusted Publisher and GitHub environment
+setup is normally needed only once per repository. Release only packages that
+changed; other packages may keep their existing versions. Skip deferred packages.
+
+Run Git commands in the repository of the package being released:
+
+| Package | Directory from the Younger checkout | Expected official `origin` |
+| --- | --- | --- |
+| `younger` | `.` | `Yangs-AI/Younger` |
+| `younger-logics-ir` | `younger/logics/ir` | `Yangs-AI/Younger-Logics-IR` |
+| `younger-apps-dl` | `younger/apps/dl` | `Yangs-AI/Younger-Apps-DL` |
+
+For a standalone component checkout, use its root directory. A tag in the parent
+repository does not tag or publish its submodules.
+
+1. On `dev`, update this package's `project.version` in `pyproject.toml`, dependency
+   ranges when needed, and release notes. Use a new version for new artifacts.
+   For example, a compatible IR fix does not require a new kernel or DL version.
+2. Run relevant tests and build checks described below. Commit and push changes
+   in each affected repository. Component changes must be pushed before the
+   parent can check out their commits in CI.
+3. For a new tested combination, update the parent repository's submodule pointers
+   and `releases/current.txt` to the actual package versions. Commit these changes
+   in the parent repository. Run **Verify package combination** for that checkout;
+   matching the combination does not require package version numbers to be equal.
+4. Open a PR from `dev` to `main` in the package repository. In its latest commit's
+   **Checks**, confirm **Build and release** jobs `build` and `verify` succeeded.
+   For a parent PR changing package versions, submodule pointers, or the combination,
+   also confirm **Verify package combination** job `integration` succeeded.
+   `publish` and `github-release` are skipped on PRs and manual runs. Documentation-only
+   parent PRs may not trigger integration because it has path filters.
+5. After the PR is merged and required dependency versions are available on PyPI,
+   use the commands below in this package's repository to tag its release commit
+   on `main`. For the first coordinated release, publish Younger, then IR, then DL;
+   for later releases, publish only the changed packages in dependency order.
+   A component's standalone check can fail until its required upstream version is
+   on PyPI; rerun that check after publishing the upstream dependency.
+6. In GitHub **Actions**, open the tag-triggered **Build and release** run and
+   confirm `build`, `verify`, `publish`, and `github-release` all succeeded. Confirm
+   the version on PyPI and its GitHub Release, then install that exact version in a
+   clean environment outside the source checkout and check its import, CLI, and
+   relevant functional paths. Finally, record the released component commits in
+   the parent and preserve accepted combinations as new named snapshots.
+
+First, synchronize `main` and inspect the release commit. Start with a clean
+working tree; confirm `origin` is the intended repository from the table:
+
+```bash
+git status --short
+git remote -v
+git fetch origin --tags
+git switch main
+git pull --ff-only origin main
+git log -1 --oneline
+```
+
+Read the version from this repository's `pyproject.toml` using Python 3.12+:
+
+```bash
+release_version=$(python -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')
+git tag --list "v${release_version}"
+```
+
+If the tag is listed, stop and inspect the existing release; do not overwrite it.
+Confirm this is the intended new version and release commit, then create and push
+only that tag. This push starts the actual PyPI publication:
+
+```bash
+git tag -a "v${release_version}" -m "Release ${release_version}"
+git push origin "v${release_version}"
+```
+
+For an IR release, run this sequence inside `younger/logics/ir`; for a DL release,
+run it inside `younger/apps/dl`. Each reads its own version and publishes only its
+own package. Do not repeat the parent package's tag operation for unchanged or
+deferred components.
+
+If a check fails, open the failing job and step in **Actions** to read the error.
+If **Run workflow** is unavailable, the workflow must first exist on the default
+branch for manual dispatch; a PR can run its `pull_request` checks before that.
+For a coordinated release, prepare and check the combination first, then complete
+the package PR, tag, and publication steps in dependency order.
+
 ## Current release scope
 
 Publish `younger`, `younger-logics-ir`, and `younger-apps-dl` at `0.1.0`. Defer
@@ -18,6 +103,24 @@ DL is planned to depend on Core as well as IR. Its current code does not import
 Core; declare the dependency when the integration is implemented, after a
 compatible Core version is available. If Core becomes required before DL's first
 release, publish Core first or defer DL as well.
+
+## Deferring a package
+
+If a package such as DL is postponed, update the release scope consistently:
+
+1. Remove it from `releases/current.txt`. A still-unreleased candidate snapshot
+   such as the initial `0.1.0.txt` may also be updated; preserve snapshots of
+   already-published combinations.
+2. Remove kernel extras that require the unavailable release. For DL, these are
+   `apps` and `apps-dl`. Changing published dependency metadata requires a new
+   kernel version; before the first publication, adjust the candidate directly.
+3. Remove the package from the parent integration workflow's build directories,
+   install extras, imports, and CLI checks. Removing a requirements-file line
+   alone does not remove wheels passed directly to pip or an extras dependency.
+4. Update the release scope and installation examples in the documentation.
+
+The deferred repository and its Trusted Publisher configuration may remain in
+place. Publish that package later using its own version and tag when ready.
 
 ## Branches and tags
 
@@ -124,21 +227,11 @@ under `releases/`, and preserve existing snapshots such as `releases/0.1.0.txt`.
 Updating only the combination record or submodule pointers does not require a new
 kernel package version.
 
-Existing source remains unchanged. The last local kernel test run has unresolved
-failures that still block the kernel release:
-
-- Kernel tests: 13 pass and 3 fail. Two directory-lock tests supply strings to
-  the existing `Path`-only API; the retry test patches an outdated import path
-  and also uses an outdated argument name.
-- In the deferred Core package, the CLI imports `create`, `update`, and `output` from modules that do not
-  define those commands; its `--help` invocation fails on the `create` import.
-- In the deferred Bench package, the CLI imports `generate` from a module that does not define it.
-
-The deferred packages' CLI failures are outside the current combination check
-and must be addressed before those packages are published.
-
-These are local Python 3.12 results, not a successful GitHub Actions run or a
-claim that model conversion and training have been tested.
+The kernel workflow runs its tests against the installed wheel; confirm its
+current result in CI for every release. The earlier directory-lock and retry test
+calling errors have been corrected. Core and Bench are deferred and outside the
+current combination check; verify their CLI and functionality before enabling
+their releases. Build and CLI checks do not cover model conversion or training.
 
 During the first release, a component's independent installation job may fail
 until its required kernel/IR version exists on PyPI. Use the combination workflow
@@ -162,13 +255,8 @@ being uploaded; announce the combination only after every required package is
 available and installation has passed. PyPI does not provide atomic multi-project
 uploads.
 
-In each in-scope package's own repository, after the release changes are merged
-into `main`, tag that release commit:
-
-```bash
-git tag -a v0.1.0 -m "Release 0.1.0"
-git push origin v0.1.0
-```
+In each in-scope package's own repository, follow [Routine release](#routine-release)
+to synchronize `main`, read that package's version, and tag its release commit.
 
 The **Build and release** workflow runs on pull requests, manual dispatch, and
 `v*` tag pushes. Only tag pushes publish to PyPI. Successful publication creates
