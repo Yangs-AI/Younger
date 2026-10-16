@@ -3,10 +3,15 @@
 This document explains how to develop and contribute to this repository.
 
 ## Repository layout and dependency graph
-- `younger`: kernel package
+- `younger`: kernel package with optional component extras
 - `younger_logics_core` and `younger_logics_ir`: logic toolchains, depend on `younger`
-- `younger_apps_dl`: DL apps, depend on `younger` + `younger_logics_core` + `younger_logics_ir`
-- `younger_tools_bench`: tools (planned)
+- `younger_apps_dl`: DL apps, depend on `younger` + `younger_logics_ir`
+- `younger_tools_bench`: tools (planned), depend on `younger` + `younger_logics_ir`
+
+The current PyPI release includes only the kernel, IR, and DL packages. Core and
+Bench remain available for source development and will be published separately.
+DL is planned to also depend on Core once that integration is implemented and a
+compatible Core version has been published.
 
 ## Development environment
 Use Python 3.12+ with a dedicated virtual environment.
@@ -82,10 +87,12 @@ pip install -e younger/tools/bench[develop]
 
 ## Dependency boundaries
 To keep the dependency graph clean:
-- `younger` provides kernel capabilities and does not depend on logics/apps/tools.
+- `younger` provides kernel capabilities; logics/apps/tools are optional extras, not required dependencies.
 - `younger_logics_core` and `younger_logics_ir` depend only on `younger`.
-- `younger_apps_dl` depends on `younger` + `younger_logics_core` + `younger_logics_ir`.
-- `younger_tools_bench` is not part of the dependency chain for now.
+- `younger_apps_dl` depends on `younger` + `younger_logics_ir`.
+- Its planned Core integration may add `younger_logics_core` to these dependencies;
+  publish Core and declare a compatible range before releasing DL code that uses it.
+- `younger_tools_bench` depends on `younger` + `younger_logics_ir`.
 
 New code must follow these boundaries to avoid cyclic dependencies.
 
@@ -128,6 +135,11 @@ pytest younger/apps/dl/tests
 
 ## Branching and commits
 - Use the `dev` branch for day-to-day work.
+- Merge reviewed and tested release changes from `dev` into `main`, then tag the
+  release commit on `main` as `v<version>`. Each repository owns its own tags.
+- Create a `release/0.1` branch only when stabilizing or maintaining the `0.1.x`
+  series separately from ongoing work in `dev`; a branch per patch is unnecessary.
+- Apply relevant maintenance fixes back to ongoing development as well.
 - Commit message format: `type: summary` (e.g., `feat: add new parser`).
 
 ## Pull Request (PR) workflow
@@ -182,3 +194,9 @@ See [RELEASE.md](RELEASE.md) for the publishing order and checklist.
 Versioning notes:
 - Use PEP 440 versions (e.g., `0.0.1a1`, `0.1.0`, `1.0.0`).
 - Prefer compatible dependency ranges (e.g., `younger>=x,<y`) to avoid install-time mismatches.
+
+Each repository owns its `pyproject.toml` version and `v<version>` tags. Components
+release independently within their declared compatibility ranges. See
+[RELEASE.md](RELEASE.md) for the per-repository GitHub/PyPI workflow and the parent
+repository's combination validation. Component changes must be committed in the
+component repository; a parent commit alone does not include their files.

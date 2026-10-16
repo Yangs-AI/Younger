@@ -87,13 +87,15 @@ class StorageTests(unittest.TestCase):
     def test_lock_contention_and_release_after_exception(self):
         script = (
             'import sys\n'
+            'import pathlib\n'
             'from younger.commons.io import directory_lock\n'
             'try:\n'
-            '    with directory_lock(sys.argv[1]): pass\n'
+            '    with directory_lock(pathlib.Path(sys.argv[1])): pass\n'
             'except RuntimeError:\n'
             '    sys.exit(7)\n'
         )
         with tempfile.TemporaryDirectory() as root:
+            root = pathlib.Path(root)
             with self.assertRaises(ValueError):
                 with directory_lock(root):
                     result = subprocess.run([sys.executable, '-c', script, root], timeout=10, capture_output=True)
@@ -104,7 +106,7 @@ class StorageTests(unittest.TestCase):
             self.assertTrue((pathlib.Path(root) / '.lock').exists())
 
     def test_retry_scope_and_exhaustion(self):
-        with patch('younger.commons.download.time.sleep') as sleep:
+        with patch('younger.commons.utils.time.sleep') as sleep:
             operation = Mock(side_effect=[requests.Timeout(), requests.ConnectionError(), 'ok'])
             self.assertEqual(retry_http(operation), 'ok')
             self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2])
@@ -113,7 +115,7 @@ class StorageTests(unittest.TestCase):
                 response.status_code = status
                 operation = Mock(side_effect=requests.HTTPError(response=response))
                 with self.assertRaises(requests.HTTPError):
-                    retry_http(operation, attempts=3)
+                    retry_http(operation, max_attempts=3)
                 self.assertEqual(operation.call_count, calls)
             operation = Mock(side_effect=ValueError('bad catalogue'))
             with self.assertRaises(ValueError):
@@ -123,12 +125,14 @@ class StorageTests(unittest.TestCase):
     def test_lock_released_when_owner_is_killed(self):
         script = (
             'import sys, time\n'
+            'import pathlib\n'
             'from younger.commons.io import directory_lock\n'
-            'with directory_lock(sys.argv[1]):\n'
+            'with directory_lock(pathlib.Path(sys.argv[1])):\n'
             '    print("locked", flush=True)\n'
             '    time.sleep(30)\n'
         )
         with tempfile.TemporaryDirectory() as root:
+            root = pathlib.Path(root)
             owner = subprocess.Popen([sys.executable, '-c', script, root], stdout=subprocess.PIPE, text=True)
             try:
                 self.assertEqual(owner.stdout.readline().strip(), 'locked')

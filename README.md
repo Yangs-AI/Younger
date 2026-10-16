@@ -23,10 +23,10 @@ pip install "younger[logics]"
 
 # Deep-learning apps
 pip install "younger[apps]"
-
-# Bench tools (when ready)
-pip install "younger[tools]"
 ```
+
+Core and Bench publication is deferred. Extras for those packages will be added
+after their releases; `younger[logics]` currently installs IR only.
 
 ### Option B: Install from source (recommended for developers)
 This repo includes multiple sub-packages. Use editable installs for local development.
@@ -49,32 +49,40 @@ pip install -e younger/logics/ir
 ```
 
 ## Publishing Strategy (for maintainers)
-The repository is a monorepo that ships multiple Python packages:
+
+Younger is maintained in independent repositories connected by Git submodules.
+Each package owns its version and publishes independently to GitHub and PyPI:
 
 - `younger` (kernel)
-- `younger-logics-core`
+- `younger-logics-core` (publication deferred)
 - `younger-logics-ir`
 - `younger-apps-dl`
 - `younger-tools-bench` (planned)
 
-Recommended release order:
-1) Publish `younger-logics-core` and `younger-logics-ir` to PyPI.
-2) Publish `younger-apps-dl` (depends on kernel + logics).
-3) Publish `younger` (kernel) with extras that depend on the above.
-Make sure each sub-package has a proper `pyproject.toml` with PEP 440 versions and compatible dependency ranges.
+The current release scope is `younger`, `younger-logics-ir`, and `younger-apps-dl`
+at `0.1.0`; subsequent versions do not need to match. Internal dependency ranges
+declare compatibility. When new dependency
+versions are needed, publish the kernel first, then logics, then apps/tools.
+Kernel extras install compatible components. `releases/current.txt` records the
+candidate combination checked by CI; named files in `releases/` preserve specific
+combinations. See [RELEASE.md](RELEASE.md) for CI validation,
+Trusted Publishing setup, release tags, and the coordinated release procedure.
+Conda distribution is deferred.
 
 ## Dependency Map
-- `younger`: kernel
+
+- `younger`: kernel, with optional extras for components
 - `younger-logics-core` and `younger-logics-ir`: depend on `younger`
-- `younger-apps-dl`: depends on `younger` + `younger-logics-core` + `younger-logics-ir`
-- `younger-tools-bench`: tools (planned)
+- `younger-apps-dl` and `younger-tools-bench`: depend on `younger` and `younger-logics-ir`
+- `younger-apps-dl` will also depend on `younger-logics-core` when that integration
+  is implemented and a compatible Core release is available.
 
 ## Runtime Dependencies (Summary)
-- `younger`: tqdm, click, fsspec, psutil, tomlkit
+- `younger`: tqdm, click, fsspec, psutil, tomlkit, requests, python-semantic-release
 - `younger-logics-core`: tqdm, click, psutil, pandas, networkx
 - `younger-logics-ir`: onnx, tqdm, click, networkx
-- `younger-apps-dl`: torch, pandas, scikit-learn, networkx, torch-geometric, tabulate, younger-logics-core, younger-logics-ir
-- `younger-tools-bench`: tqdm, click, psutil, pandas, networkx
+- `younger-apps-dl`: torch, pandas, scikit-learn, networkx, torch-geometric, tabulate, pydantic, younger-logics-ir
+- `younger-tools-bench`: tqdm, click, psutil, pandas, networkx, younger-logics-ir
 
 ## Development & Contributing
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, branching, testing, and contribution workflow.

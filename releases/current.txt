@@ -1,0 +1,7 @@
+# Current candidate combination; keep these pins in sync with the parent checkout.
+# Package versions may advance independently. Preserve named snapshots separately.
+# These are direct package pins, not a lock of all transitive dependencies.
+# Core and Bench are deferred and are not required for this combination.
+younger==0.1.0
+younger-logics-ir==0.1.0
+younger-apps-dl==0.1.0

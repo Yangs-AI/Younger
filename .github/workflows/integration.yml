@@ -1,0 +1,57 @@
+name: Verify package combination
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "younger/**"
+      - "pyproject.toml"
+      - "MANIFEST.in"
+      - "scripts/check_release.py"
+      - "releases/**"
+      - ".github/workflows/integration.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          submodules: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python -m pip install build twine
+      - name: Build each pinned repository independently
+        run: |
+          mkdir wheelhouse
+          for directory in . younger/logics/ir younger/apps/dl; do
+            (
+              cd "$directory"
+              python -m build
+              python -m twine check --strict dist/*
+              env -u GITHUB_REF_TYPE -u GITHUB_REF_NAME python scripts/check_release.py
+            )
+            cp "$directory"/dist/*.whl wheelhouse/
+          done
+      - name: Install and verify the candidate combination
+        working-directory: ${{ runner.temp }}
+        run: |
+          python -m pip install "$GITHUB_WORKSPACE"/wheelhouse/*.whl -r "$GITHUB_WORKSPACE/releases/current.txt" 'younger[apps,logics]'
+          python -m pip check
+          python -c 'import younger, younger_logics_ir, younger_apps_dl'
+          younger --help
+          younger logics ir --help
+          younger apps dl --help
+          for command in younger-logics-ir younger-apps-dl; do
+            "$command" --help
+          done
+      - uses: actions/upload-artifact@v5
+        with:
+          name: integration-wheels
+          path: wheelhouse/*.whl
+          if-no-files-found: error

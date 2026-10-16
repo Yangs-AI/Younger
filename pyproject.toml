@@ -1,18 +1,20 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["younger*"]
+include = ["younger", "younger.commands*", "younger.commons*"]
+namespaces = false
 exclude = ["tests*", "third_parties*"]
 
 [project]
 name = "Younger"
 description = "A Younger Project for Artificial Intelligence: Datasets, Benchmarks, and Applications."
-version = "0.0.1a2"
+version = "0.1.0"
 readme = "README.md"
 requires-python = ">=3.12"
-license = {text = "Apache Software License"}
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 keywords = ["Younger", "Benchmark", "Artificial Intelligence"]
 authors = [{name = "Jason-Young-AI", email = "AI.Jason.Young@outlook.com"}]
 maintainers = [{name = "Jason-Young-AI", email = "AI.Jason.Young@outlook.com"}]
@@ -24,12 +26,10 @@ classifiers=[
     'Intended Audience :: Science/Research',
     'Topic :: Scientific/Engineering :: Artificial Intelligence',
 
-    'License :: OSI Approved :: Apache Software License',
-
     'Operating System :: OS Independent',
 
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
     "Programming Language :: Python :: 3 :: Only",
 ]
 
@@ -40,37 +40,29 @@ dependencies = [
     "psutil",
     "tomlkit",
     "requests",
+    "python-semantic-release",
 ]
 
 [project.optional-dependencies]
 apps = [
-    "younger-apps-dl",
+    "younger-apps-dl>=0.1.0,<0.2.0",
 ]
 apps-dl = [
-    "younger-apps-dl",
-]
-
-tools = [
-    "younger-tools-bench",
-]
-tools-bench = [
-    "younger-tools-bench",
+    "younger-apps-dl>=0.1.0,<0.2.0",
 ]
 
 logics = [
-    "younger-logics-ir",
-    "younger-logics-core",
+    "younger-logics-ir>=0.1.0,<0.2.0",
 ]
 logics-ir = [
-    "younger-logics-ir",
+    "younger-logics-ir>=0.1.0,<0.2.0",
 ]
-logics-core = [
-    "younger-logics-core",
-]
-
 develop = [
     "sphinx",
-    "python-semantic-release"
+    "python-semantic-release",
+    "pytest",
+    "build",
+    "twine"
 ]
 
 [project.urls]
