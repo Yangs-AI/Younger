@@ -1,0 +1,104 @@
+name: Build and release
+
+on:
+  pull_request:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.metadata.outputs.name }}
+      module: ${{ steps.metadata.outputs.module }}
+      prerelease: ${{ steps.metadata.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python -m pip install build twine
+      - id: metadata
+        run: python scripts/check_release.py --metadata-only >> "$GITHUB_OUTPUT"
+      - run: python -m build
+      - run: python -m twine check --strict dist/*
+      - run: python scripts/check_release.py
+      - uses: actions/upload-artifact@v5
+        with:
+          name: distributions
+          path: dist/*
+          if-no-files-found: error
+
+  verify:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v6
+        with:
+          name: distributions
+          path: dist
+      - run: python -m pip install dist/*.whl
+      - name: Check installed package and console script
+        working-directory: ${{ runner.temp }}
+        env:
+          PACKAGE_MODULE: ${{ needs.build.outputs.module }}
+          PACKAGE_NAME: ${{ needs.build.outputs.name }}
+        run: |
+          python -c 'import importlib, os; importlib.import_module(os.environ["PACKAGE_MODULE"])'
+          "$PACKAGE_NAME" --help
+          python -m pip check
+      - name: Kernel tests against the installed wheel
+        if: needs.build.outputs.name == 'younger'
+        working-directory: ${{ runner.temp }}
+        run: |
+          python -m pip install pytest
+          python -m pytest "$GITHUB_WORKSPACE/tests" --import-mode=importlib
+
+  publish:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: [build, verify]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/${{ needs.build.outputs.name }}
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: distributions
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    needs: [build, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: distributions
+          path: dist
+      - name: Attach the published distributions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          flags=()
+          if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" dist/* --verify-tag --generate-notes "${flags[@]}"

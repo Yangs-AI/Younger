@@ -20,5 +20,6 @@ from . import download
 from . import hash
 from . import io
 from . import logging
+from . import metadata
 from . import version
 from . import utils

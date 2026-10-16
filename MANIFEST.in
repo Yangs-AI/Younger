@@ -1,0 +1,4 @@
+prune younger/apps
+prune younger/logics
+prune younger/tools
+global-exclude .DS_Store *.py[cod]
