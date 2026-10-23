@@ -63,6 +63,42 @@ class DownloadTests(unittest.TestCase):
         )
         self.assertEqual(self.filepath.read_bytes(), b'abc')
 
+    def test_416_without_valid_content_range_checks_full_response_size(self):
+        for headers in ({}, {'Content-Range': 'invalid'}):
+            with self.subTest(headers=headers):
+                self.filepath.write_bytes(b'abc')
+                partial = make_response(416, headers, b'Illegal Range request\n')
+                with patch('younger.commons.download.fsspec.open') as open_file:
+                    self.run_download(partial, make_response(200, {'Content-Length': '3'}, b'abc'))
+                    open_file.assert_not_called()
+                self.assertEqual(self.filepath.read_bytes(), b'abc')
+                self.assertNotIn('Range', self.request_headers[-1])
+                self.assertTrue(partial.raw.closed)
+
+    def test_416_without_content_range_replaces_oversized_local_file(self):
+        self.filepath.write_bytes(b'old content')
+        self.run_download(
+            make_response(416, {'Content-Length': '22'}, b'Illegal Range request\n'),
+            make_response(200, {'Content-Length': '3'}, b'abc'),
+        )
+        self.assertEqual(self.filepath.read_bytes(), b'abc')
+
+    def test_416_without_content_range_and_unknown_size_downloads_full_file(self):
+        self.filepath.write_bytes(b'ab')
+        self.run_download(make_response(416), make_response(200, {}, b'abc'))
+        self.assertEqual(self.filepath.read_bytes(), b'abc')
+
+    def test_416_without_content_range_replaces_local_file_with_empty_file(self):
+        self.filepath.write_bytes(b'old content')
+        self.run_download(make_response(416), make_response(200, {'Content-Length': '0'}))
+        self.assertEqual(self.filepath.read_bytes(), b'')
+
+    def test_416_without_content_range_does_not_hide_full_request_errors(self):
+        self.filepath.write_bytes(b'abc')
+        with self.assertRaises(requests.HTTPError):
+            self.run_download(make_response(416), make_response(404))
+        self.assertEqual(self.filepath.read_bytes(), b'abc')
+
     def test_unknown_partial_total_restarts_with_full_download(self):
         self.filepath.write_bytes(b'ab')
         partial = make_response(206, {'Content-Range': 'bytes 2-3/*'}, b'cd')

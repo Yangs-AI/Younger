@@ -87,19 +87,20 @@ def download(url: str, dirpath: pathlib.Path, filename: str | None = None, force
         response = session.get(url, headers=headers, stream=True, allow_redirects=True, proxies=proxies, timeout=(10, 60))
 
         try:
-            restarted = False
+            can_skip_existing = not force
             expected_response_size = None
             while True:
                 if response.status_code == 416 and resume_byte_pos:
                     # A completed file commonly produces "bytes */<total>".
                     match = re.fullmatch(r'bytes \*/(\d+)', response.headers.get('Content-Range', '').strip())
-                    if match is None:
-                        response.raise_for_status()
-
-                    remote_size = int(match.group(1))
-                    if resume_byte_pos == remote_size:
-                        print(f'File is already downloaded: {filename}')
-                        return filepath
+                    if match is not None:
+                        remote_size = int(match.group(1))
+                        if resume_byte_pos == remote_size:
+                            print(f'File is already downloaded: {filename}')
+                            return filepath
+                        can_skip_existing = False
+                    # Some servers omit Content-Range on 416. Obtain a full
+                    # response to check its size before replacing the file.
                 else:
                     response.raise_for_status()
 
@@ -139,10 +140,10 @@ def download(url: str, dirpath: pathlib.Path, filename: str | None = None, force
                     # completion. Retry once without Range, before writing.
                     if 'Range' not in headers:
                         raise ValueError('Cannot confirm completion of an HTTP 206 response with unknown total size.')
+                    can_skip_existing = False
 
                 # An unusable offset or unknown total requires a full download.
                 response.close()
-                restarted = True
                 resume_byte_pos = 0
                 headers.pop('Range', None)
                 response = session.get(url, headers=headers, stream=True, allow_redirects=True, proxies=proxies, timeout=(10, 60))
@@ -161,11 +162,10 @@ def download(url: str, dirpath: pathlib.Path, filename: str | None = None, force
                 )
 
                 if (
-                    not force
-                    and not restarted
+                    can_skip_existing
                     and filepath.is_file()
                     and total_size is not None
-                    and resume_byte_pos == total_size
+                    and filepath.stat().st_size == total_size
                 ):
                     print(f'File is already downloaded: {filename}')
                     return filepath
