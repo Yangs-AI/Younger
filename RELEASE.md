@@ -63,7 +63,7 @@ git pull --ff-only origin main
 git log -1 --oneline
 ```
 
-Read the version from this repository's `pyproject.toml` using Python 3.12+:
+Read the version from this repository's `pyproject.toml` using Python 3.11+:
 
 ```bash
 release_version=$(python -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')
@@ -206,7 +206,8 @@ Use Python 3.12 or newer. For each affected repository:
    must not contain component repositories; component wheels must include all
    their discovered Python subpackages.
 4. Run relevant unit and functional tests. The release workflow installs the
-   wheel in a clean Python 3.12 environment, checks import and CLI loading, and
+   wheel in clean Python 3.11 and 3.12 environments for the kernel and IR
+   (3.12 for other components), checks import and CLI loading, and
    runs `pip check`. The kernel also runs `tests/` against its installed wheel.
    These checks do not replace model conversion, training, or other component
    functional tests; some existing IR test files are network integration scripts.
@@ -294,3 +295,8 @@ The parent may additionally create an `ecosystem-YYYY.MM` tag and GitHub Release
 recording tested package versions and submodule commits. Such tags do not match
 `v*` and do not publish the kernel. Updating only submodule pointers or a version
 combination record does not require a new kernel package version.
+
+Python 3.11 support: publish the updated Younger kernel before the IR release.
+IR verification on Python 3.11 needs a published kernel with compatible Python
+metadata. The full combination still uses Python 3.12 until other components
+are verified on 3.11.

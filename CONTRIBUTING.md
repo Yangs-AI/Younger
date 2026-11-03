@@ -14,7 +14,8 @@ DL is planned to also depend on Core once that integration is implemented and a
 compatible Core version has been published.
 
 ## Development environment
-Use Python 3.12+ with a dedicated virtual environment.
+Use Python 3.11+ for the kernel and IR with a dedicated virtual environment.
+Other components currently require Python 3.12+; use 3.12+ for the full combination.
 
 If you plan to contribute, fork the repo first and clone your fork (recommended). After cloning, add the upstream remote for syncing:
 
