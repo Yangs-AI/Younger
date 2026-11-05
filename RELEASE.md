@@ -92,7 +92,8 @@ the package PR, tag, and publication steps in dependency order.
 
 ## Current release scope
 
-Publish `younger`, `younger-logics-ir`, and `younger-apps-dl` at `0.1.0`. Defer
+Publish `younger==0.1.1`, `younger-logics-ir==0.2.0`, and
+`younger-apps-dl==0.1.1`. Defer
 `younger-logics-core` and `younger-tools-bench`; their source repositories and
 prepared release configuration may remain in place without publishing tags.
 They are excluded from `releases/current.txt` and the combination workflow.
@@ -103,6 +104,14 @@ DL is planned to depend on Core as well as IR. Its current code does not import
 Core; declare the dependency when the integration is implemented, after a
 compatible Core version is available. If Core becomes required before DL's first
 release, publish Core first or defer DL as well.
+
+For this combination, publish the Python 3.11-compatible kernel first, then rerun
+IR standalone checks and publish IR, followed by DL. The parent combination check
+builds local component wheels, so its submodule pointers may reference pushed
+release-candidate commits before those components are published. Commit and push
+the DL dependency/version changes before updating its parent submodule pointer.
+Kernel extras requiring the new components become installable only after those
+components are published.
 
 ## Deferring a package
 
