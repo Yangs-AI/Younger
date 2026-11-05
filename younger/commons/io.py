@@ -6,7 +6,7 @@
 # Author: Jason Young (杨郑鑫).
 # E-Mail: AI.Jason.Young@outlook.com
 # Last Modified by: Jason Young (杨郑鑫)
-# Last Modified time: 2026-09-28 21:25:39
+# Last Modified time: 2026-11-04 17:16:10
 # Copyright (c) 2024 Yangs.AI
 # 
 # This source code is licensed under the Apache License 2.0 found in the
@@ -269,7 +269,7 @@ def loads_json(serialized_object: str, cls: json.JSONDecoder | None = None) -> o
 
 
 def saves_json(serializable_object: object, cls: json.JSONEncoder | None = None) -> str:
-    serialized_object = json.dumps(serializable_object, sort_keys=True, cls=cls)
+    serialized_object = json.dumps(serializable_object, sort_keys=True, ensure_ascii=False, cls=cls)
     return serialized_object
 
 

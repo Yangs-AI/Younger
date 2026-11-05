@@ -69,6 +69,9 @@ combinations. See [RELEASE.md](RELEASE.md) for CI validation,
 Trusted Publishing setup, release tags, and the coordinated release procedure.
 Conda distribution is deferred.
 
+For each new version, follow the [routine release checklist](RELEASE.md#routine-release).
+It includes the repository directories, PR checks, tag commands, and release order.
+
 ## Dependency Map
 
 - `younger`: kernel, with optional extras for components
