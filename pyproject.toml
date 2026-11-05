@@ -10,7 +10,7 @@ exclude = ["tests*", "third_parties*"]
 [project]
 name = "Younger"
 description = "A Younger Project for Artificial Intelligence: Datasets, Benchmarks, and Applications."
-version = "0.1.0"
+version = "0.1.1"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
