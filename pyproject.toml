@@ -53,10 +53,10 @@ apps-dl = [
 ]
 
 logics = [
-    "younger-logics-ir>=0.1.0,<0.2.0",
+    "younger-logics-ir>=0.2.0,<0.3.0",
 ]
 logics-ir = [
-    "younger-logics-ir>=0.1.0,<0.2.0",
+    "younger-logics-ir>=0.2.0,<0.3.0",
 ]
 develop = [
     "sphinx",
