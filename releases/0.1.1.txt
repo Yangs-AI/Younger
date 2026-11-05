@@ -3,4 +3,4 @@
 # Core and Bench are deferred and are not required for this combination.
 younger==0.1.1
 younger-logics-ir==0.2.0
-younger-apps-dl==0.1.0
+younger-apps-dl==0.1.1
